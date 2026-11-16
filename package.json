@@ -1,0 +1,38 @@
+{
+  "name": "cairnpost",
+  "version": "0.1.0",
+  "description": "The Node.js client for CairnPost, a self-hostable gateway for transactional email.",
+  "license": "MIT",
+  "author": "Michael Ramirez",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mettjs/cairnpost-node.git"
+  },
+  "homepage": "https://github.com/mettjs/cairnpost-node#readme",
+  "bugs": "https://github.com/mettjs/cairnpost-node/issues",
+  "keywords": ["cairnpost", "email", "transactional", "webhooks"],
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "check": "tsc -p tsconfig.json",
+    "test": "node --test \"test/*.test.ts\"",
+    "test:integration": "node --test \"test/integration/*.test.ts\"",
+    "prepare": "npm run build"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "typescript": "7.0.2"
+  }
+}

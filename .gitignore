@@ -1,0 +1,23 @@
+# Build output and dependencies
+dist/
+node_modules/
+*.tgz
+
+# Local env overrides
+.env
+.env.local
+
+# Editor / OS cruft
+.DS_Store
+.idea/
+.vscode/
+
+# Working documents and assistant rules stay out of the repository
+.claude/
+CLAUDE.md
+PLAN.md
+STATUS.md
+NOTES.md
+COMMIT_MESSAGE.md
+.archive/
+graphify-out/
