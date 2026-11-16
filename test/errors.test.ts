@@ -14,6 +14,8 @@ test("an error says what to do", async (t) => {
     [409, `{"name":"invalid_idempotent_request","message":"Used."}`, "", ErrorCode.idempotentMismatch, undefined, false, false],
     [409, `{"name":"concurrent_idempotent_requests","message":"In flight."}`, "7", ErrorCode.idempotentInFlight, undefined, true, false],
     [408, `{"name":"request_incomplete","message":"Not whole."}`, "", ErrorCode.requestIncomplete, undefined, true, false],
+    // A 408 from something in between may come after the server took it.
+    [408, `<html>request timeout</html>`, "", undefined, undefined, true, true],
     [429, `{"name":"rate_limit_exceeded","message":"Limit.","id":"msg-2"}`, "30", ErrorCode.rateLimited, "msg-2", true, false],
     [502, `{"name":"upstream_unknown","message":"Lost.","id":"msg-3"}`, "", ErrorCode.upstreamUnknown, "msg-3", true, true],
     [503, `{"name":"upstream_unavailable","message":"Down."}`, "", ErrorCode.upstreamDown, undefined, true, false],

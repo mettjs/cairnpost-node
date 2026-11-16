@@ -188,9 +188,9 @@ try {
 |---|---|
 | `CairnPostError`, status 422 | The request is at fault and will never succeed. `recipient_suppressed` is one of them. |
 | `CairnPostError`, 409 `invalid_idempotent_request` | The key was used for a different email, which was sent. |
-| `CairnPostError`, 409 `concurrent_idempotent_requests`, 408, 429, 503 | Nothing was sent. Try again, after `retryAfterMs` when set. A 408 is a request that did not arrive whole in time, a 503 can be a server busy with other large emails. |
+| `CairnPostError`, 409 `concurrent_idempotent_requests`, 408 `request_incomplete`, 429, 503 | Nothing was sent. Try again, after `retryAfterMs` when set. The 408 is a request that did not arrive whole in time, a 503 can be a server busy with other large emails. |
 | `CairnPostError`, 502 `upstream_unknown` | The mail provider did not answer. The email may have gone. |
-| `CairnPostError`, any other 5xx but the 503s above | The server failed after it began, or something in between answered for it (a proxy's 502). The email may have gone. |
+| `CairnPostError`, any other 5xx but the 503s above, or a 408 that is not CairnPost's own | The server failed after it began, or something in between answered for it (a proxy's 502 or 408). The email may have gone. |
 | `TransportError` | The server was not reached, its answer never came or was not CairnPost's, or the call ran out of time or was cancelled; `reason` says which, and `causeCode` holds the runtime's short name for it (`ECONNREFUSED`, say) when it gave one. For a send, the email may have gone. |
 | `TypeError` | What was given to the client cannot be sent as it is (an `idempotencyKey` a header cannot carry, a date that is none). Nothing was sent. |
 
