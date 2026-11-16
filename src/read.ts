@@ -26,7 +26,7 @@ export function fields(v: unknown): Fields {
  */
 export function has(o: Fields, ...keys: string[]): Fields {
   for (const key of keys) {
-    if (!Object.hasOwn(o, key)) throw new Misshapen();
+    if (o[key] === undefined || o[key] === null || !Object.hasOwn(o, key)) throw new Misshapen();
   }
   return o;
 }

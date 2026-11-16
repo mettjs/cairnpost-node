@@ -90,7 +90,7 @@ test("webhooks and deliveries", async (t) => {
 // An answer that lacks what CairnPost always says in it is not
 // CairnPost's: it must not read as "nothing", "no" or "done".
 test("an answer of nothing is not taken for an answer", async (t) => {
-  for (const body of ["{}", "<html>maintenance</html>"]) {
+  for (const body of ["{}", "<html>maintenance</html>", `{"data":null,"added":null,"lifted":null,"delivered":null,"driver":null,"state":null}`]) {
     const c = (await serve(t, 200, body)).client;
     const calls: [string, () => Promise<unknown>][] = [
       ["suppressions.add", () => c.suppressions.add("example.com", "a@example.org")],

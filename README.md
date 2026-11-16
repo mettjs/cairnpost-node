@@ -299,9 +299,10 @@ http.createServer(async (req, res) => {
   being replayed.
 - `event.id` is the same on every try of a webhook. CairnPost retries one
   that was not answered with a 2xx, and may send one twice: act once per id.
-- `event.email` is set for every type that starts with `email.` but
-  `email.received`, and `event.email.bounce` for `email.bounced`; a webhook
-  that lacks them is refused (`"payload"`). `event.email` is undefined for
+- `event.email` is set for `email.delivered`, `email.delivery_delayed`,
+  `email.bounced`, `email.complained` and `email.failed`, and
+  `event.email.bounce` for `email.bounced`; a webhook of those types that
+  lacks them is refused (`"payload"`). `event.email` is undefined for
   `webhook.test`, the webhook sent to try an endpoint out. A type this
   client does not know is passed on as it is, with what could be read of it.
 - `event.email.to` holds the one address the event is about, also when the
