@@ -17,9 +17,9 @@ export interface Problem {
  *   sent until the domain is set up with the mail provider.
  * - 409 `invalid_idempotent_request`: the key was used for another email,
  *   which was sent. Do not retry.
- * - 409 `concurrent_idempotent_requests`, 408, 429, 503: nothing was
- *   sent. Try again, after `retryAfterMs` when it is set.
- * - 502 `upstream_unknown`, and any 5xx that is not CairnPost's own: the
+ * - 409 `concurrent_idempotent_requests`, 408 `request_incomplete`, 429,
+ *   503: nothing was sent. Try again, after `retryAfterMs` when it is set.
+ * - 502 `upstream_unknown`, and any 5xx or 408 that is not CairnPost's own: the
  *   email may have gone. Try again with the same idempotency key, and
  *   only with it. `mayHaveSent` says which errors these are.
  */
@@ -60,7 +60,8 @@ export class CairnPostError extends Error {
    * retry only with the same idempotency key.
    */
   get retryable(): boolean {
-    // A 408 is a request that did not arrive whole: nothing was done with it.
+    // A 408 is a request that did not arrive whole in time; mayHaveSent
+    // says what one from something in between leaves open.
     if (this.code === ErrorCode.idempotentInFlight || this.status === 429 || this.status === 408) return true;
     // Changed by others at the same time: read it and try again.
     if (this.code === ErrorCode.changedMeanwhile) return true;

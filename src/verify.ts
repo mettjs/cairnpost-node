@@ -85,10 +85,12 @@ export class Verifier {
    * request must not be trusted. A `TypeError` means the call itself is
    * wrong (a body already parsed, say), whatever the request was.
    *
-   * In the event answered, `email` is set for every type that starts with
-   * "email." but `email.received`, and `email.bounce` for
-   * `email.bounced`; `suppression` is set for `address.suppressed` and
-   * `received` for `email.received`.
+   * In the event answered, `email` is set for `email.delivered`,
+   * `email.delivery_delayed`, `email.bounced`, `email.complained` and
+   * `email.failed`, and `email.bounce` for `email.bounced`; `suppression`
+   * is set for `address.suppressed` and `received` for `email.received`.
+   * A type this client does not know is passed on with what could be
+   * read of it, which may be no `email`.
    *
    * CairnPost signs as Standard Webhooks and Svix do, and sends the
    * headers under both names; either set is accepted.

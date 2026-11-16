@@ -18,6 +18,9 @@ export function mayHaveSent(err: unknown): boolean {
   // Refused now; but an id with it is an earlier try under the same key
   // whose answer never came.
   if (err.code === ErrorCode.recipientSuppressed) return err.emailId !== undefined;
+  // CairnPost's own 408 is a request it never had whole. One from
+  // something in between may come after the server took the email.
+  if (err.status === 408) return err.code !== ErrorCode.requestIncomplete;
   if (err.status < 500) return false;
   // The server's send does not stop when its answer is lost on the way,
   // so only its own word that nothing went counts.
