@@ -426,7 +426,7 @@ The third argument of `new CairnPost(baseUrl, apiKey, options)`:
 | Option | Does |
 |---|---|
 | `timeoutMs` | How long a call may take (150 000 by default), a whole number. Keep it above the server's send and batch timeouts. |
-| `maxAnswerBytes` | How much of an answer is read (64 MiB by default). A larger one is an error that says so. |
+| `maxAnswerBytes` | How much of an answer is read (64 MiB by default). A larger one is an error that says so. A refusal is not counted: 64 KiB of one are read, and a longer one is its status alone. |
 | `userAgent` | Put your application's name before the client's in `User-Agent`. |
 | `fetch` | Call through your own `fetch`. It must not retry by itself. |
 

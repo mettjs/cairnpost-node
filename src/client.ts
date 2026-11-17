@@ -37,7 +37,11 @@ export interface ClientOptions {
    * this says: a server set to take longer wants a `fetch` of your own.
    */
   timeoutMs?: number | undefined;
-  /** How much of an answer is read; a larger one is an error that says so. */
+  /**
+   * How much of an answer is read; a larger one is an error that says
+   * so. A refusal is not counted: 64 KiB of one are read whatever this
+   * says, and a longer one is its status alone.
+   */
   maxAnswerBytes?: number | undefined;
   /** The application's name, put before the client's own in the User-Agent header. A name a header cannot carry is ignored. */
   userAgent?: string | undefined;

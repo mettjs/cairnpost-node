@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { inspect } from "node:util";
-import { CairnPost, isNotFound, CairnPostError, mayHaveSent, TransportError, version } from "../src/index.ts";
+import { CairnPost, isNotFound, CairnPostError, ErrorCode, mayHaveSent, TransportError, version } from "../src/index.ts";
 import { email, key, serve, serving, thrown, up } from "./stand.ts";
 
 test("the client refuses what cannot work", () => {
@@ -115,9 +115,33 @@ test("a time or a size the runtime cannot take is refused when the client is mad
 // A long page from something that is not CairnPost is not read whole
 // to say that it is not CairnPost's.
 test("a refusal is read no further than its few fields need", async (t) => {
-  const s = await serve(t, 502, "<html>" + "x".repeat(1 << 20));
+  for (const maxAnswerBytes of [1024, 1 << 20, undefined]) {
+    const s = await serve(t, 502, "<html>" + "x".repeat(1 << 20), { maxAnswerBytes });
+    const err = await thrown(() => s.client.emails.send(email));
+    assert.ok(err instanceof CairnPostError && err.status === 502 && err.code === undefined && mayHaveSent(err), `reading ${maxAnswerBytes} bytes`);
+  }
+});
+
+// A refusal longer than is read is not CairnPost's: nothing of what
+// was read of it is believed, a name that says "nothing was sent" least
+// of all.
+test("a refusal longer than is read is its status alone", async (t) => {
+  const s = await serving(t, (res) => {
+    res.writeHead(503);
+    res.write(`{"statusCode":503,"name":"unavailable","message":"Down.","id":"msg-1"}`);
+    setImmediate(() => res.end(" ".repeat(80 * 1024)));
+  });
   const err = await thrown(() => s.client.emails.send(email));
-  assert.ok(err instanceof CairnPostError && err.status === 502 && err.code === undefined && mayHaveSent(err));
+  assert.ok(err instanceof CairnPostError && err.status === 503 && err.code === undefined && err.emailId === undefined && mayHaveSent(err));
+});
+
+// CairnPost's own refusal is read whole under a limit smaller than it:
+// its name says whether the email may have gone.
+test("a refusal longer than the limit on answers keeps its name", async (t) => {
+  const body = `{"statusCode":422,"name":"recipient_suppressed","message":"${"Suppressed. ".repeat(40)}","id":"msg-1"}`;
+  const s = await serve(t, 422, body, { maxAnswerBytes: 100 });
+  const err = await thrown(() => s.client.emails.send(email));
+  assert.ok(err instanceof CairnPostError && err.code === ErrorCode.recipientSuppressed && err.emailId === "msg-1" && mayHaveSent(err));
 });
 
 test("an id that would name another path is not asked of the server", async (t) => {
