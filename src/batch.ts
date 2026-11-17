@@ -2,7 +2,7 @@ import { type Email, readSent, type Sent } from "./email.ts";
 import { isKnown } from "./codes.ts";
 import type { CairnPostError } from "./errors.ts";
 import { problemFrom } from "./problem.ts";
-import { fields, list, Misshapen } from "./read.ts";
+import { fields, has, list, Misshapen } from "./read.ts";
 
 /** Several emails to send in one request. */
 export interface Batch {
@@ -33,7 +33,7 @@ export function failed(results: BatchResult[]): number {
  * is not CairnPost's: which emails went is not known.
  */
 export function readBatch(v: unknown, later: boolean[]): BatchResult[] {
-  const results = list(fields(v), "data", (item) => fields(item));
+  const results = list(has(fields(v), "data"), "data", (item) => fields(item));
   if (results.length !== later.length) throw new Misshapen();
   return results.map((o, i): BatchResult => {
     if (o["error"] === undefined || o["error"] === null) {

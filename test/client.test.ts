@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { inspect } from "node:util";
 import { CairnPost, isNotFound, CairnPostError, mayHaveSent, TransportError, version } from "../src/index.ts";
-import { email, key, serve, serving, thrown } from "./stand.ts";
+import { email, key, serve, serving, thrown, up } from "./stand.ts";
 
 test("the client refuses what cannot work", () => {
   for (const base of ["", "mail.example.com", "ftp://mail.example.com", "https://", "https://user:pass@mail.example.com"]) {
@@ -39,7 +39,7 @@ test("the version is the package's", () => {
 });
 
 test("a key is sent without the space around it, and is not shown", async (t) => {
-  const s = await serving(t, (res) => res.end('{"status":"ok","driver":"capture"}'));
+  const s = await serving(t, (res) => res.end(up));
   const client = new CairnPost(s.url, " cp_test_KEYMARK\n");
   await client.limits();
   assert.equal(s.seen[0]?.auth, "Bearer cp_test_KEYMARK");
@@ -78,7 +78,7 @@ test("a send is made once even when the connection drops", async (t) => {
   for (const idempotencyKey of [undefined, "welcome-42"]) {
     let posts = 0;
     const s = await serving(t, (res, _n, seen) => {
-      if (seen.method === "GET") return void res.end('{"status":"ok"}'); // leaves a connection to reuse
+      if (seen.method === "GET") return void res.end(up); // leaves a connection to reuse
       posts++;
       res.socket?.destroy(); // the request was read; hang up without an answer
     });

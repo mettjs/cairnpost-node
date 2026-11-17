@@ -36,6 +36,13 @@ export function text(o: Fields, key: string): string {
   return maybeText(o, key) ?? "";
 }
 
+/** A text that must be there: what names a record is never empty. */
+export function said(o: Fields, key: string): string {
+  const v = maybeText(o, key);
+  if (v === undefined) throw new Misshapen();
+  return v;
+}
+
 /** A text field; undefined when it is not there or empty. */
 export function maybeText(o: Fields, key: string): string | undefined {
   const v = o[key];
@@ -63,14 +70,18 @@ export function flag(o: Fields, key: string): boolean {
 // A time as CairnPost writes one: RFC 3339, with a zone.
 const stamp = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
 
-/** A time; undefined when it is not there. */
+// How a time that was never set is written by a server in Go: the first
+// instant of the year 1.
+const unset = new Date("0001-01-01T00:00:00Z").getTime();
+
+/** A time; undefined when it is not there, or was never set. */
 export function maybeTime(o: Fields, key: string): Date | undefined {
   const v = o[key];
   if (v === undefined || v === null) return undefined;
   if (typeof v !== "string" || !stamp.test(v)) throw new Misshapen();
   const at = new Date(v);
   if (Number.isNaN(at.getTime())) throw new Misshapen();
-  return at;
+  return at.getTime() === unset ? undefined : at;
 }
 
 /** A time that must be there. */

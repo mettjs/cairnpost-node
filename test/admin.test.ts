@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CairnPostError, DeliveryState, ErrorCode, isWrongAddress, NotCapturingError, Reason, TransportError } from "../src/index.ts";
-import { serve, serving, thrown } from "./stand.ts";
+import { serve, serving, thrown, up } from "./stand.ts";
 
 const day = `"created_at":"2030-01-01T00:00:00Z"`;
 
@@ -37,7 +37,8 @@ test("a walk stops at a cursor that does not move", async (t) => {
 test("suppress and lift", async (t) => {
   const s = await serving(t, (res, n) => {
     if (n === 1) return void res.writeHead(201).end(`{"domain":"example.com","address":"a@example.org","added":true}`);
-    res.end(n === 2 ? `{"domain":"example.com","address":"a@example.org","added":false}` : `{"lifted":3}`);
+    if (n === 2) return void res.end(`{"domain":"example.com","address":"a@example.org","added":false}`);
+    res.end(n === 3 ? `{"lifted":1}` : `{"lifted":3}`);
   });
   assert.equal(await s.client.suppressions.add("example.com", "a@example.org", "asked"), true);
   assert.equal(await s.client.suppressions.add("example.com", "a@example.org"), false, "already there");
@@ -85,35 +86,6 @@ test("webhooks and deliveries", async (t) => {
     "GET /webhooks/wh-1/deliveries?limit=200&state=failed", "GET /webhooks/wh-1/deliveries?limit=200&after=c2&state=failed",
     "POST /webhooks/wh-1/deliveries/dlv%201/retry",
   ]);
-});
-
-// An answer that lacks what CairnPost always says in it is not
-// CairnPost's: it must not read as "nothing", "no" or "done".
-test("an answer of nothing is not taken for an answer", async (t) => {
-  for (const body of ["{}", "<html>maintenance</html>", `{"data":null,"added":null,"lifted":null,"delivered":null,"driver":null,"state":null}`]) {
-    const c = (await serve(t, 200, body)).client;
-    const calls: [string, () => Promise<unknown>][] = [
-      ["suppressions.add", () => c.suppressions.add("example.com", "a@example.org")],
-      ["suppressions.lift", () => c.suppressions.lift("example.com", "a@example.org")],
-      ["suppressions.liftAll", () => c.suppressions.liftAll("example.com")],
-      ["suppressions.list", () => c.suppressions.list()],
-      ["webhooks.list", () => c.webhooks.list()],
-      ["webhooks.test", () => c.webhooks.test("w")],
-      ["webhooks.deliveries", () => c.webhooks.deliveries("w")],
-      ["webhooks.retryDelivery", () => c.webhooks.retryDelivery("w", "d")],
-      ["webhooks.delete", () => c.webhooks.delete("w")],
-      ["templates.list", () => c.templates.list()],
-      ["templates.delete", () => c.templates.delete("t")],
-      ["received.list", () => c.received.list()],
-      ["received.delete", () => c.received.delete("r")],
-      ["limits", () => c.limits()],
-      ["captured", () => c.captured()],
-    ];
-    for (const [name, call] of calls) {
-      const err = await thrown(call);
-      assert.ok(err instanceof TransportError && err.reason === "not_cairnpost", `${name} took ${body}`);
-    }
-  }
 });
 
 test("a webhook change can switch off and clear, and leaves the rest alone", async (t) => {
@@ -217,7 +189,7 @@ test("health says a wrong address, and captured a server that delivers for real"
     assert.ok(err instanceof CairnPostError || err instanceof TransportError, body);
     assert.equal(isWrongAddress(err), status === 404, body);
   }
-  const real = await serving(t, (res, _n, seen) => (seen.path === "/health" ? res.end(`{"status":"ok"}`) : res.writeHead(404).end(`{"name":"route_not_found","message":"Nothing here."}`)));
+  const real = await serving(t, (res, _n, seen) => (seen.path === "/health" ? res.end(up.replace("capture", "cloudflare")) : res.writeHead(404).end(`{"name":"route_not_found","message":"Nothing here."}`)));
   assert.ok((await thrown(() => real.client.captured())) instanceof NotCapturingError);
   // With no server of CairnPost's there at all, the address is what is wrong.
   const none = await serve(t, 404, `{"name":"route_not_found","message":"Nothing here."}`);

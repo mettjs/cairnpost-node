@@ -1,9 +1,8 @@
 import { reading } from "./answer.ts";
-import { type Delivery, type DeliveryQuery, readDelivery } from "./deliveries.ts";
+import { type Delivery, type DeliveryQuery, DeliveryState, readDelivery } from "./deliveries.ts";
 import { largestPage, type Page, paging, readPage, walk } from "./pages.ts";
 import { type NewWebhook, readWebhook, type Webhook, type WebhookChange, type WebhookTest } from "./endpoint.ts";
-import { named } from "./emails.ts";
-import { count, fields, flag, has, list, maybeText, present } from "./read.ts";
+import { count, fields, flag, has, list, maybeText, Misshapen, present, text } from "./read.ts";
 import type { CallOptions, Transport } from "./transport.ts";
 
 /** The URLs told what becomes of emails. Every call needs an admin key. */
@@ -23,7 +22,7 @@ export class Webhooks {
       events: n.events && n.events.length > 0 ? n.events : undefined,
       description: n.description || undefined,
     };
-    return reading(await this.#t.json({ method: "POST", path: ["webhooks"], body, signal: options.signal }), readWebhook);
+    return reading(await this.#t.json({ method: "POST", path: ["webhooks"], body, signal: options.signal }), withSecret);
   }
 
   /** Answers every endpoint. */
@@ -77,7 +76,7 @@ export class Webhooks {
    * for its own time meanwhile.
    */
   async rotateSecret(id: string, options: CallOptions = {}): Promise<Webhook> {
-    return reading(await this.#t.json({ method: "POST", path: ["webhooks", id, "secret"], signal: options.signal }), readWebhook);
+    return reading(await this.#t.json({ method: "POST", path: ["webhooks", id, "secret"], signal: options.signal }), withSecret);
   }
 
   /**
@@ -108,6 +107,20 @@ export class Webhooks {
   /** Has a webhook tried now: once more if it was given up, or without waiting for its next try if it is pending. */
   async retryDelivery(id: string, deliveryId: string, options: CallOptions = {}): Promise<void> {
     const answer = await this.#t.json({ method: "POST", path: ["webhooks", id, "deliveries", deliveryId, "retry"], signal: options.signal });
-    reading(answer, (v) => named(v, "state"));
+    // Tried now, it is owed again: any other state is not the answer.
+    reading(answer, (v) => {
+      if (text(fields(v), "state") !== DeliveryState.pending) throw new Misshapen();
+    });
   }
+}
+
+/**
+ * Reads an endpoint that must come with its signing secret. An answer
+ * without one is not CairnPost's: the secret is said this once, and an
+ * endpoint taken without it could never be verified.
+ */
+function withSecret(v: unknown): Webhook {
+  const w = readWebhook(v);
+  if (w.secret === undefined) throw new Misshapen();
+  return w;
 }

@@ -1,4 +1,4 @@
-import { count, type Fields, fields, flag, list, maybeText, maybeTime, part, present, text, textMap, texts, time } from "./read.ts";
+import { count, type Fields, fields, flag, list, maybeText, maybeTime, part, present, said, text, textMap, texts, time } from "./read.ts";
 
 /** States of an email. */
 export const State = {
@@ -131,7 +131,7 @@ function readContent(o: Fields): Content {
 export function readMessage(v: unknown): Message {
   const o = fields(v);
   return present<Message>({
-    id: text(o, "id"),
+    id: said(o, "id"),
     from: text(o, "from"),
     to: text(o, "to"),
     state: text(o, "state"),

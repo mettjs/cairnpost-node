@@ -2,7 +2,7 @@ import { reading } from "./answer.ts";
 import { placeOf } from "./emails.ts";
 import { type FileInfo, readFile } from "./message.ts";
 import { largestPage, type Page, paging, readPage, walk } from "./pages.ts";
-import { count, type Fields, fields, flag, list, maybeText, maybeTime, Misshapen, part, present, text, texts, time } from "./read.ts";
+import { count, type Fields, fields, flag, list, maybeText, maybeTime, part, present, said, text, texts, time } from "./read.ts";
 import type { CallOptions, Transport } from "./transport.ts";
 
 /**
@@ -81,8 +81,8 @@ function readContent(o: Fields): ReceivedContent {
 
 function readReceived(v: unknown): Received {
   const o = fields(v);
-  const r = present<Received>({
-    id: text(o, "id"),
+  return present<Received>({
+    id: said(o, "id"),
     to: text(o, "to"),
     from: maybeText(o, "from"),
     receivedAt: time(o, "received_at"),
@@ -90,8 +90,6 @@ function readReceived(v: unknown): Received {
     size: count(o, "size"),
     content: part(o, "content", readContent),
   });
-  if (r.id === "") throw new Misshapen();
-  return r;
 }
 
 /**

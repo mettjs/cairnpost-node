@@ -73,4 +73,7 @@ export async function thrown(run: () => Promise<unknown>): Promise<unknown> {
   throw new Error("nothing was thrown");
 }
 
+/** What a server that is up says of itself. */
+export const up = `{"status":"ok","driver":"capture","version":"dev","events":"off","webhooks":"sending","pruning":"running","scheduled":"sending","inbound":"off"}`;
+
 export const email = { from: "a@example.com", to: ["b@example.org"], subject: "s", text: "t" };
