@@ -146,7 +146,7 @@ test("a refusal longer than the limit on answers keeps its name", async (t) => {
 
 test("an id that would name another path is not asked of the server", async (t) => {
   const s = await serve(t, 200, "{}");
-  for (const id of ["", ".", ".."]) {
+  for (const id of ["", ".", "..", 42 as unknown as string, undefined as unknown as string]) {
     assert.ok((await thrown(() => s.client.emails.get(id))) instanceof TypeError);
     assert.ok((await thrown(() => s.client.webhooks.retryDelivery("w", id))) instanceof TypeError);
   }

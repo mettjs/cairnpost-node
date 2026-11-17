@@ -81,7 +81,9 @@ export class Transport {
     let url = s.base;
     for (const segment of k.path) {
       // A segment of dots would be resolved away, and name another path.
-      if (segment === "" || segment === "." || segment === "..") throw new TypeError("cairnpost: an id is required");
+      // One that is not text would be written into the path as some
+      // other text than the caller holds.
+      if (typeof segment !== "string" || segment === "" || segment === "." || segment === "..") throw new TypeError("cairnpost: an id is required");
       url += "/" + encodeURIComponent(segment);
     }
     const query = new URLSearchParams();
