@@ -24,13 +24,14 @@ export function readEvent(id: string, body: unknown): WebhookEvent {
   if (event.type === "") throw new Misshapen();
   const data = fields(wire["data"]);
   if (event.type === EventType.received) {
-    // It is about an email that came, and must say which and for whom.
-    const received = present<EventReceived>({
+    // It is about an email that came, and must say which, for whom and
+    // when.
+    const received: EventReceived = {
       id: text(data, "inbound_id"),
       from: text(data, "from"),
       to: texts(data, "to"),
-      receivedAt: maybeTime(data, "received_at"),
-    });
+      receivedAt: time(data, "received_at"),
+    };
     if (received.id === "" || received.to.length === 0) throw new Misshapen();
     return { ...event, received };
   }
@@ -40,12 +41,14 @@ export function readEvent(id: string, body: unknown): WebhookEvent {
   } catch {
     email = undefined;
   }
-  if (email !== undefined && email.id !== "" && email.to.length > 0) {
+  const known = aboutAnEmail.has(event.type);
+  if (email !== undefined && email.id !== "" && email.to.length > 0 && (email.createdAt !== undefined || !known)) {
     event.email = email;
-  } else if (aboutAnEmail.has(event.type)) {
-    // An event about an email must say which: one that does not is
-    // refused here, not handed on with nothing in it. A type this client
-    // does not know is passed on with what could be read of it.
+  } else if (known) {
+    // An event about an email must say which, and when that email was
+    // made: one that does not is refused here, not handed on with
+    // nothing in it. A type this client does not know is passed on with
+    // what could be read of it.
     throw new Misshapen();
   }
   if (event.type === EventType.bounced && !event.email?.bounce?.type) throw new Misshapen();

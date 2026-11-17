@@ -1,4 +1,4 @@
-import { count, fields, maybeText, maybeTime, present, text, time } from "./read.ts";
+import { count, fields, maybeText, maybeTime, present, said, text, time } from "./read.ts";
 import type { CallOptions } from "./transport.ts";
 
 /** States of a webhook delivery. */
@@ -47,7 +47,7 @@ export interface DeliveryQuery extends CallOptions {
 export function readDelivery(v: unknown): Delivery {
   const o = fields(v);
   return present<Delivery>({
-    id: text(o, "id"),
+    id: said(o, "id"),
     emailId: maybeText(o, "email_id"),
     inboundId: maybeText(o, "inbound_id"),
     type: text(o, "type"),

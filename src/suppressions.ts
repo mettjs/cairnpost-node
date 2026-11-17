@@ -1,6 +1,6 @@
 import { reading } from "./answer.ts";
 import { largestPage, type Page, paging, readPage, walk } from "./pages.ts";
-import { count, fields, flag, has, maybeText, present, text, time } from "./read.ts";
+import { count, fields, flag, has, maybeText, Misshapen, present, said, text, time } from "./read.ts";
 import type { CallOptions, Transport } from "./transport.ts";
 
 /** Why an address is suppressed. */
@@ -39,8 +39,8 @@ export interface SuppressionQuery extends CallOptions {
 function readSuppression(v: unknown): Suppression {
   const o = fields(v);
   return present<Suppression>({
-    domain: text(o, "domain"),
-    address: text(o, "address"),
+    domain: said(o, "domain"),
+    address: said(o, "address"),
     reason: text(o, "reason"),
     emailId: maybeText(o, "email_id"),
     note: maybeText(o, "note"),
@@ -87,7 +87,11 @@ export class Suppressions {
   /** Lets an address be sent to again from a sending domain. `isNotFound` says it was not suppressed. */
   async lift(domain: string, address: string, options: CallOptions = {}): Promise<void> {
     const answer = await this.#t.json({ method: "POST", path: ["suppressions", "lift"], body: { domain, address }, signal: options.signal });
-    reading(answer, (v) => has(fields(v), "lifted"));
+    // CairnPost lifts the one address or says it was not suppressed: an
+    // answer of none, or of several, is not its own.
+    reading(answer, (v) => {
+      if (lifted(v) !== 1) throw new Misshapen();
+    });
   }
 
   /**
@@ -97,6 +101,13 @@ export class Suppressions {
   async liftAll(domain: string, reason?: string, options: CallOptions = {}): Promise<number> {
     const body = { domain, all: true, reason: reason || undefined };
     const answer = await this.#t.json({ method: "POST", path: ["suppressions", "lift"], body, signal: options.signal });
-    return reading(answer, (v) => count(has(fields(v), "lifted"), "lifted"));
+    return reading(answer, lifted);
   }
+}
+
+/** Reads how many suppressions were lifted. */
+function lifted(v: unknown): number {
+  const n = count(has(fields(v), "lifted"), "lifted");
+  if (n < 0) throw new Misshapen();
+  return n;
 }

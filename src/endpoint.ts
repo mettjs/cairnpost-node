@@ -1,4 +1,4 @@
-import { type Fields, fields, flag, maybeText, maybeTime, Misshapen, present, text, texts, time } from "./read.ts";
+import { type Fields, fields, flag, maybeText, maybeTime, present, said, text, texts, time } from "./read.ts";
 
 /** An endpoint: a URL CairnPost tells what becomes of emails. */
 export interface Webhook {
@@ -65,8 +65,8 @@ export interface WebhookTest {
 
 export function readWebhook(v: unknown): Webhook {
   const o: Fields = fields(v);
-  const w = present<Webhook>({
-    id: text(o, "id"),
+  return present<Webhook>({
+    id: said(o, "id"),
     url: text(o, "url"),
     domain: maybeText(o, "domain"),
     events: texts(o, "events"),
@@ -78,6 +78,4 @@ export function readWebhook(v: unknown): Webhook {
     previousSecretUntil: maybeTime(o, "previous_secret_until"),
     secret: maybeText(o, "secret"),
   });
-  if (w.id === "") throw new Misshapen();
-  return w;
 }

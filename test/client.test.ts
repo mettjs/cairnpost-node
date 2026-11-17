@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { inspect } from "node:util";
-import { CairnPost, isNotFound, CairnPostError, mayHaveSent, TransportError, version } from "../src/index.ts";
-import { email, key, serve, serving, thrown } from "./stand.ts";
+import { CairnPost, isNotFound, CairnPostError, ErrorCode, mayHaveSent, TransportError, version } from "../src/index.ts";
+import { email, key, serve, serving, thrown, up } from "./stand.ts";
 
 test("the client refuses what cannot work", () => {
   for (const base of ["", "mail.example.com", "ftp://mail.example.com", "https://", "https://user:pass@mail.example.com"]) {
@@ -39,7 +39,7 @@ test("the version is the package's", () => {
 });
 
 test("a key is sent without the space around it, and is not shown", async (t) => {
-  const s = await serving(t, (res) => res.end('{"status":"ok","driver":"capture"}'));
+  const s = await serving(t, (res) => res.end(up));
   const client = new CairnPost(s.url, " cp_test_KEYMARK\n");
   await client.limits();
   assert.equal(s.seen[0]?.auth, "Bearer cp_test_KEYMARK");
@@ -78,7 +78,7 @@ test("a send is made once even when the connection drops", async (t) => {
   for (const idempotencyKey of [undefined, "welcome-42"]) {
     let posts = 0;
     const s = await serving(t, (res, _n, seen) => {
-      if (seen.method === "GET") return void res.end('{"status":"ok"}'); // leaves a connection to reuse
+      if (seen.method === "GET") return void res.end(up); // leaves a connection to reuse
       posts++;
       res.socket?.destroy(); // the request was read; hang up without an answer
     });
@@ -115,14 +115,38 @@ test("a time or a size the runtime cannot take is refused when the client is mad
 // A long page from something that is not CairnPost is not read whole
 // to say that it is not CairnPost's.
 test("a refusal is read no further than its few fields need", async (t) => {
-  const s = await serve(t, 502, "<html>" + "x".repeat(1 << 20));
+  for (const maxAnswerBytes of [1024, 1 << 20, undefined]) {
+    const s = await serve(t, 502, "<html>" + "x".repeat(1 << 20), { maxAnswerBytes });
+    const err = await thrown(() => s.client.emails.send(email));
+    assert.ok(err instanceof CairnPostError && err.status === 502 && err.code === undefined && mayHaveSent(err), `reading ${maxAnswerBytes} bytes`);
+  }
+});
+
+// A refusal longer than is read is not CairnPost's: nothing of what
+// was read of it is believed, a name that says "nothing was sent" least
+// of all.
+test("a refusal longer than is read is its status alone", async (t) => {
+  const s = await serving(t, (res) => {
+    res.writeHead(503);
+    res.write(`{"statusCode":503,"name":"unavailable","message":"Down.","id":"msg-1"}`);
+    setImmediate(() => res.end(" ".repeat(80 * 1024)));
+  });
   const err = await thrown(() => s.client.emails.send(email));
-  assert.ok(err instanceof CairnPostError && err.status === 502 && err.code === undefined && mayHaveSent(err));
+  assert.ok(err instanceof CairnPostError && err.status === 503 && err.code === undefined && err.emailId === undefined && mayHaveSent(err));
+});
+
+// CairnPost's own refusal is read whole under a limit smaller than it:
+// its name says whether the email may have gone.
+test("a refusal longer than the limit on answers keeps its name", async (t) => {
+  const body = `{"statusCode":422,"name":"recipient_suppressed","message":"${"Suppressed. ".repeat(40)}","id":"msg-1"}`;
+  const s = await serve(t, 422, body, { maxAnswerBytes: 100 });
+  const err = await thrown(() => s.client.emails.send(email));
+  assert.ok(err instanceof CairnPostError && err.code === ErrorCode.recipientSuppressed && err.emailId === "msg-1" && mayHaveSent(err));
 });
 
 test("an id that would name another path is not asked of the server", async (t) => {
   const s = await serve(t, 200, "{}");
-  for (const id of ["", ".", ".."]) {
+  for (const id of ["", ".", "..", 42 as unknown as string, undefined as unknown as string]) {
     assert.ok((await thrown(() => s.client.emails.get(id))) instanceof TypeError);
     assert.ok((await thrown(() => s.client.webhooks.retryDelivery("w", id))) instanceof TypeError);
   }

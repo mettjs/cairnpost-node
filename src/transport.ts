@@ -81,7 +81,9 @@ export class Transport {
     let url = s.base;
     for (const segment of k.path) {
       // A segment of dots would be resolved away, and name another path.
-      if (segment === "" || segment === "." || segment === "..") throw new TypeError("cairnpost: an id is required");
+      // One that is not text would be written into the path as some
+      // other text than the caller holds.
+      if (typeof segment !== "string" || segment === "" || segment === "." || segment === "..") throw new TypeError("cairnpost: an id is required");
       url += "/" + encodeURIComponent(segment);
     }
     const query = new URLSearchParams();
@@ -111,9 +113,12 @@ export class Transport {
       type = res.headers.get("content-type") ?? "";
       retryAfter = res.headers.get("retry-after");
       // Of an answer that is a refusal only its few short fields are
-      // kept: no more of it is read than holds them.
+      // kept: no more of it is read than holds them, and that much is
+      // read whatever the limit on answers. Its name says whether the
+      // email may have gone. A refusal longer than that is not
+      // CairnPost's: nothing of it is believed but its status.
       const fine = status >= 200 && status <= 299;
-      raw = fine ? await readAtMost(res, s.maxAnswerBytes, false) : await readAtMost(res, Math.min(s.maxAnswerBytes, mostOfARefusal), true);
+      raw = fine ? await readAtMost(res, s.maxAnswerBytes, false) : await readAtMost(res, mostOfARefusal, true);
     } catch (cause) {
       if (cause instanceof TransportError) throw cause;
       if (k.signal?.aborted) throw new TransportError("cancelled", cause);
@@ -129,7 +134,11 @@ export class Transport {
   }
 }
 
-/** How much of an answer that is a refusal is read. */
+/**
+ * How much of an answer that is a refusal is read. It is not an option:
+ * nothing past a refusal's short fields is kept, so there is nothing to
+ * choose.
+ */
 const mostOfARefusal = 64 * 1024;
 
 /**
@@ -144,7 +153,7 @@ function ranOut(cause: unknown): boolean {
 
 /**
  * Reads an answer's body, and no more of it than `most`: a longer one is
- * an error, or with `cut` is read that far and left.
+ * an error, or with `cut` is left and read as nothing.
  */
 async function readAtMost(res: Response, most: number, cut: boolean): Promise<Uint8Array> {
   if (res.body === null) return new Uint8Array();
@@ -157,7 +166,7 @@ async function readAtMost(res: Response, most: number, cut: boolean): Promise<Ui
     if (size + value.byteLength > most) {
       await reader.cancel().catch(() => {});
       if (!cut) throw new TransportError("too_large");
-      break;
+      return new Uint8Array();
     }
     size += value.byteLength;
     chunks.push(value);

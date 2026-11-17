@@ -1,5 +1,5 @@
 import { reading } from "./answer.ts";
-import { fields, flag, has, list, maybeText, Misshapen, present, text, time } from "./read.ts";
+import { fields, flag, has, list, maybeText, Misshapen, present, said, text, time } from "./read.ts";
 import type { CallOptions, Transport } from "./transport.ts";
 
 /**
@@ -82,8 +82,8 @@ export interface TemplateList {
 
 function readTemplate(v: unknown): Template {
   const o = fields(v);
-  const t = present<Template>({
-    id: text(o, "id"),
+  return present<Template>({
+    id: said(o, "id"),
     name: text(o, "name"),
     domain: maybeText(o, "domain"),
     subject: text(o, "subject"),
@@ -99,8 +99,6 @@ function readTemplate(v: unknown): Template {
     createdAt: time(o, "created_at"),
     updatedAt: time(o, "updated_at"),
   });
-  if (t.id === "") throw new Misshapen();
-  return t;
 }
 
 /** The templates emails are sent from. Every call needs an admin key. */
@@ -133,7 +131,12 @@ export class Templates {
   async list(domain?: string, options: CallOptions = {}): Promise<TemplateList> {
     const query = { domain: domain || undefined };
     const answer = await this.#t.json({ method: "GET", path: ["templates"], query, signal: options.signal });
-    return reading(answer, (v) => ({ data: list(has(fields(v), "data"), "data", readTemplate), more: flag(fields(v), "more") }));
+    // Whether there are more is said either way: left out, it must not
+    // read as "these are all".
+    return reading(answer, (v) => {
+      const o = has(fields(v), "data", "more");
+      return { data: list(o, "data", readTemplate), more: flag(o, "more") };
+    });
   }
 
   /** Answers one template whole. `isNotFound` says there is none, or that it is another sending domain's. */

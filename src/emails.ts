@@ -1,8 +1,8 @@
 import { type Batch, type BatchResult, readBatch } from "./batch.ts";
 import { reading } from "./answer.ts";
 import { type Email, idempotency, instant, readSent, type Sent, wireOf } from "./email.ts";
-import { type Message, readMessage } from "./message.ts";
-import { fields, Misshapen, text } from "./read.ts";
+import { type Message, readMessage, State } from "./message.ts";
+import { type Fields, fields, maybeTime, Misshapen, text } from "./read.ts";
 import type { CallOptions, Transport } from "./transport.ts";
 
 /** Sending emails and reading what became of them. */
@@ -63,11 +63,7 @@ export class Emails {
    */
   async get(id: string, options: CallOptions = {}): Promise<Message> {
     const answer = await this.#t.json({ method: "GET", path: ["emails", id], signal: options.signal });
-    return reading(answer, (v) => {
-      const m = readMessage(v);
-      if (m.id === "") throw new Misshapen();
-      return m;
-    });
+    return reading(answer, readMessage);
   }
 
   /**
@@ -80,8 +76,9 @@ export class Emails {
    */
   async cancel(id: string, options: CallOptions = {}): Promise<void> {
     const answer = await this.#t.json({ method: "POST", path: ["emails", id, "cancel"], signal: options.signal });
-    // Only CairnPost's own word that it is cancelled counts.
-    reading(answer, (v) => named(v, "id"));
+    reading(answer, (v) => {
+      if (text(about(v, id), "state") !== State.cancelled) throw new Misshapen();
+    });
   }
 
   /**
@@ -91,8 +88,14 @@ export class Emails {
    */
   async reschedule(id: string, at: Date, options: CallOptions = {}): Promise<void> {
     const body = { scheduled_at: instant(at) };
+    // As it was asked: the time may be changed while the call is made.
+    const to = at.getTime();
     const answer = await this.#t.json({ method: "PATCH", path: ["emails", id], body, signal: options.signal });
-    reading(answer, (v) => named(v, "id"));
+    // The email's own record is at this path, and says the time it had:
+    // only the time asked for says it was moved.
+    reading(answer, (v) => {
+      if (maybeTime(about(v, id), "scheduled_at")?.getTime() !== to) throw new Misshapen();
+    });
   }
 
   /**
@@ -107,9 +110,16 @@ export class Emails {
   }
 }
 
-/** Holds an answer to saying the text CairnPost always says in it. */
-export function named(v: unknown, key: string): void {
-  if (text(fields(v), key) === "") throw new Misshapen();
+/**
+ * Holds the answer to a change of an email to naming that email, and
+ * gives it to be held to saying what was changed. Only CairnPost's own
+ * word that it was changed counts: an answer about anything else, the
+ * email's own record among them, is not one.
+ */
+function about(v: unknown, id: string): Fields {
+  const o = fields(v);
+  if (text(o, "id") !== id) throw new Misshapen();
+  return o;
 }
 
 /** A file's place as a path takes it. */

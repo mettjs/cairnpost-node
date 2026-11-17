@@ -1,5 +1,5 @@
 import { type FileInfo, readFile } from "./message.ts";
-import { count, fields, flag, has, list, maybeText, maybeTime, Misshapen, part, present, text, textMap, texts, time } from "./read.ts";
+import { count, fields, flag, has, list, maybeText, maybeTime, part, present, said, text, textMap, texts, time } from "./read.ts";
 
 /** The mail provider's sending allowance and how much is used. */
 export interface Quota {
@@ -59,9 +59,9 @@ export interface CapturedEmail {
 }
 
 export function readLimits(v: unknown): Limits {
-  const o = has(fields(v), "driver");
+  const o = fields(v);
   return present<Limits>({
-    driver: text(o, "driver"),
+    driver: said(o, "driver"),
     quota: part(o, "quota", (q) =>
       present<Quota>({ limit: count(q, "limit"), per: text(q, "per"), used: count(q, "used"), over: flag(q, "over"), resetsAt: maybeTime(q, "resets_at") }),
     ),
@@ -70,19 +70,20 @@ export function readLimits(v: unknown): Limits {
 
 export function readHealth(v: unknown): Health {
   const o = fields(v);
-  const status = text(o, "status");
-  // Anything that does not say how it is is not a CairnPost server.
-  if (status === "") throw new Misshapen();
+  // A server says how it is, what it sends with, which version it is
+  // and how each of its parts is doing; anything else that answers "ok"
+  // here does not.
+  const status = said(o, "status");
   return {
     ok: status === "ok",
     status,
-    driver: text(o, "driver"),
-    version: text(o, "version"),
-    events: text(o, "events"),
-    webhooks: text(o, "webhooks"),
-    pruning: text(o, "pruning"),
-    scheduled: text(o, "scheduled"),
-    inbound: text(o, "inbound"),
+    driver: said(o, "driver"),
+    version: said(o, "version"),
+    events: said(o, "events"),
+    webhooks: said(o, "webhooks"),
+    pruning: said(o, "pruning"),
+    scheduled: said(o, "scheduled"),
+    inbound: said(o, "inbound"),
   };
 }
 
@@ -90,7 +91,7 @@ export function readCaptured(v: unknown): CapturedEmail[] {
   return list(has(fields(v), "data"), "data", (item) => {
     const o = fields(item);
     return present<CapturedEmail>({
-      id: text(o, "id"),
+      id: said(o, "id"),
       at: time(o, "at"),
       from: text(o, "from"),
       fromName: maybeText(o, "from_name"),

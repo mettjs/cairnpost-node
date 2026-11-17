@@ -99,18 +99,32 @@ test("what is not the endpoint's is refused", () => {
   const atEdge = headers("webhook-", "e", edge, signature(signingKey, "e", edge, bounce));
   assert.equal(refused(() => v.verify(atEdge, bounce)), "taken");
   assert.equal(refused(() => verifier(1000).verify(atEdge, bounce)), "stale");
-  // Signed, about an email, and not saying which: refused, not handed on with nothing in it.
+  // Signed, about an email, and not saying which or when: refused, not handed on with nothing in it.
   const stamp = `"created_at":"2030-01-01T00:00:05Z"`;
+  const which = `"email_id":"m","to":["a@example.org"],${stamp}`;
+  const sign = (body: string) => headers("webhook-", "p", at, signature(signingKey, "p", at, body));
   for (const body of [
     `{"type":"email.bounced",${stamp}}`,
-    `{"type":"email.bounced",${stamp},"data":{"email_id":"m","to":"a@example.org","bounce":{"type":"Permanent"}}}`,
-    `{"type":"email.bounced",${stamp},"data":{"email_id":"m","to":["a@example.org"]}}`,
-    `{"type":"email.bounced",${stamp},"data":{"email_id":"m","to":["a@example.org"],"bounce":{}}}`,
-    `{"type":"email.delivered",${stamp},"data":{"email_id":"m","to":[]}}`,
-    `{"type":"email.delivered","data":{"email_id":"m","to":["a@example.org"]}}`,
-    `{${stamp},"data":{"email_id":"m","to":["a@example.org"]}}`,
+    `{"type":"email.bounced",${stamp},"data":{"email_id":"m","to":"a@example.org",${stamp},"bounce":{"type":"Permanent"}}}`,
+    `{"type":"email.bounced",${stamp},"data":{${which}}}`,
+    `{"type":"email.bounced",${stamp},"data":{${which},"bounce":{}}}`,
+    `{"type":"email.bounced",${stamp},"data":{${which},"bounce":{"type":""}}}`,
+    `{"type":"email.delivered",${stamp},"data":{"email_id":"m","to":[],${stamp}}}`,
+    `{"type":"email.delivered",${stamp},"data":{"to":["a@example.org"],${stamp}}}`,
+    `{"type":"email.delivered",${stamp},"data":{"email_id":"m","to":["a@example.org"]}}`,
+    `{"type":"email.delivered",${stamp},"data":{"email_id":"m","to":["a@example.org"],"created_at":"yesterday"}}`,
+    // A time that was never set, as a server in Go writes one.
+    `{"type":"email.delivered",${stamp},"data":{"email_id":"m","to":["a@example.org"],"created_at":"0001-01-01T00:00:00Z"}}`,
+    `{"type":"email.delivered","created_at":"0001-01-01T00:00:00Z","data":{${which}}}`,
+    `{"type":"email.delivered","data":{${which}}}`,
+    `{${stamp},"data":{${which}}}`,
   ]) {
-    assert.equal(refused(() => v.verify(headers("webhook-", "p", at, signature(signingKey, "p", at, body)), body)), "payload", body);
+    assert.equal(refused(() => v.verify(sign(body), body)), "payload", body);
+  }
+  // Each of those is whole with what it lacked.
+  for (const type of ["email.delivered", "email.delivery_delayed", "email.complained", "email.failed"]) {
+    const body = `{"type":"${type}",${stamp},"data":{${which}}}`;
+    assert.deepEqual(v.verify(sign(body), body).email?.createdAt, new Date("2030-01-01T00:00:05Z"), type);
   }
   // No secret, no verifier: nothing signed with no key at all is ever taken.
   for (const bad of ["", "c2VjcmV0", "whsec_", "whsec_not base64!", "whsec_c2VjcmV0!", undefined as unknown as string]) {
@@ -135,6 +149,14 @@ test("an email that came is told by its own event", () => {
   const body = `{"type":"email.received","created_at":"2030-01-01T00:00:00Z","data":{"inbound_id":"in-1","from":"","to":["help@example.com"],"received_at":"2030-01-01T00:00:00Z"}}`;
   const e = v.verify(headers("webhook-", "dlv-1", at, signature(signingKey, "dlv-1", at, body)), body);
   assert.deepEqual([e.email, e.received], [undefined, { id: "in-1", from: "", to: ["help@example.com"], receivedAt: new Date("2030-01-01T00:00:00Z") }]);
-  const nameless = `{"type":"email.received","created_at":"2030-01-01T00:00:00Z","data":{"from":"a@example.org","to":["help@example.com"]}}`;
-  assert.equal(refused(() => v.verify(headers("webhook-", "dlv-1", at, signature(signingKey, "dlv-1", at, nameless)), nameless)), "payload");
+  // One that does not say which, for whom or when is refused.
+  for (const data of [
+    `{"from":"a@example.org","to":["help@example.com"],"received_at":"2030-01-01T00:00:00Z"}`,
+    `{"inbound_id":"in-1","from":"a@example.org","to":[],"received_at":"2030-01-01T00:00:00Z"}`,
+    `{"inbound_id":"in-1","from":"a@example.org","to":["help@example.com"]}`,
+    `{"inbound_id":"in-1","from":"a@example.org","to":["help@example.com"],"received_at":"0001-01-01T00:00:00Z"}`,
+  ]) {
+    const without = `{"type":"email.received","created_at":"2030-01-01T00:00:00Z","data":${data}}`;
+    assert.equal(refused(() => v.verify(headers("webhook-", "dlv-1", at, signature(signingKey, "dlv-1", at, without)), without)), "payload", data);
+  }
 });

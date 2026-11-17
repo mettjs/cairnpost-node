@@ -1,4 +1,4 @@
-import { fields, maybeTime, Misshapen, text, texts } from "./read.ts";
+import { fields, maybeTime, Misshapen, said, texts } from "./read.ts";
 import type { UseTemplate } from "./templates.ts";
 import { headerSafe } from "./transport.ts";
 
@@ -135,9 +135,9 @@ export function idempotency(key: string | undefined): Record<string, string> {
  */
 export function readSent(v: unknown, later: boolean): Sent {
   const o = fields(v);
-  const sent: Sent = { id: text(o, "id"), suppressed: texts(o, "suppressed") };
+  const sent: Sent = { id: said(o, "id"), suppressed: texts(o, "suppressed") };
   const at = maybeTime(o, "scheduled_at");
   if (at) sent.scheduledAt = at;
-  if (sent.id === "" || (at !== undefined) !== later) throw new Misshapen();
+  if ((at !== undefined) !== later) throw new Misshapen();
   return sent;
 }

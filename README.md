@@ -302,15 +302,16 @@ http.createServer(async (req, res) => {
 - `event.email` is set for `email.delivered`, `email.delivery_delayed`,
   `email.bounced`, `email.complained` and `email.failed`, and
   `event.email.bounce` for `email.bounced`; a webhook of those types that
-  lacks them is refused (`"payload"`). `event.email` is undefined for
+  lacks them, or does not say when its email was made
+  (`event.email.createdAt`), is refused (`"payload"`). `event.email` is undefined for
   `webhook.test`, the webhook sent to try an endpoint out. A type this
   client does not know is passed on as it is, with what could be read of it.
 - `event.email.to` holds the one address the event is about, also when the
   email went to several; `event.email.id` is the email's one id.
 - `email.received` (`EventType.received`) tells of an email that came for
   one of your addresses, where the server takes them. It is about no email
-  you sent: `event.received` says who it is from and for, and the id to read
-  it by (see "Receiving email"). An endpoint that hears about every event
+  you sent: `event.received` says who it is from and for, when it came, and
+  the id to read it by (see "Receiving email"). An endpoint that hears about every event
   gets these too.
 - `address.suppressed` (`EventType.addressSuppressed`) tells of an address
   suppressed because of a bounce or a complaint about an email the server
@@ -426,7 +427,7 @@ The third argument of `new CairnPost(baseUrl, apiKey, options)`:
 | Option | Does |
 |---|---|
 | `timeoutMs` | How long a call may take (150 000 by default), a whole number. Keep it above the server's send and batch timeouts. |
-| `maxAnswerBytes` | How much of an answer is read (64 MiB by default). A larger one is an error that says so. |
+| `maxAnswerBytes` | How much of an answer is read (64 MiB by default). A larger one is an error that says so. A refusal is not counted: 64 KiB of one are read, and a longer one is its status alone. |
 | `userAgent` | Put your application's name before the client's in `User-Agent`. |
 | `fetch` | Call through your own `fetch`. It must not retry by itself. |
 

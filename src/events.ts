@@ -61,6 +61,7 @@ export interface EventEmail {
   from: string;
   /** The one address the event is about, also when the email went to several. */
   to: string[];
+  /** When the email was made. Set for every type this client knows; only one it does not know can leave it out. */
   createdAt?: Date;
   /** The receiving server's status ("5.1.1"). */
   code?: string;
@@ -99,5 +100,5 @@ export interface EventReceived {
   from: string;
   /** The address it came for. */
   to: string[];
-  receivedAt?: Date;
+  receivedAt: Date;
 }
