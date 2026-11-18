@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset=".github/logo-dark.svg">
-    <img src=".github/logo-light.svg" alt="CairnPost" width="330" height="72">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/mettjs/cairnpost-node/main/.github/logo-dark.svg">
+    <img src="https://raw.githubusercontent.com/mettjs/cairnpost-node/main/.github/logo-light.svg" alt="CairnPost" width="330" height="72">
   </picture>
 </p>
 
@@ -433,8 +433,8 @@ The third argument of `new CairnPost(baseUrl, apiKey, options)`:
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+See [CONTRIBUTING.md](https://github.com/mettjs/cairnpost-node/blob/main/CONTRIBUTING.md).
 
 ## License
 
-[MIT](LICENSE)
+[MIT](https://github.com/mettjs/cairnpost-node/blob/main/LICENSE)
