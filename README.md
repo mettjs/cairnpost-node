@@ -15,11 +15,12 @@ the email that comes in, and verifies the webhooks CairnPost sends.
 It is written in TypeScript, has no dependencies, and needs Node.js 22 or
 later.
 
-**Status: early, and not released yet.** It is built for CairnPost 0.1.1 and
-is not on npm. Until it is, install it from this repository:
+**Status: early.** This is 0.1.0, for CairnPost 0.1.1. The
+[changelog](https://github.com/mettjs/cairnpost-node/blob/main/CHANGELOG.md) says
+what exists.
 
 ```sh
-npm install github:mettjs/cairnpost-node
+npm install cairnpost
 ```
 
 ## Send an email
