@@ -6,8 +6,8 @@ import { serving, type Stand } from "./stand.ts";
 // The files in test/cases are the cases every CairnPost client is held
 // to, whatever language it is written in: what each call sends, the
 // answers a client must take and those it must refuse, what an error
-// says to do, which API keys it takes, and which webhooks are the
-// endpoint's. They are a copy of
+// says to do, which API keys and idempotency keys it takes, and which
+// webhooks are the endpoint's. They are a copy of
 // the server's own (client-cases in its repository) and are changed
 // there, never here. The tests in cases-*.test.ts run them.
 
