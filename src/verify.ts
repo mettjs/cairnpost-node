@@ -58,6 +58,19 @@ function decode(encoded: string): Buffer | undefined {
   return encoded !== "" && base64.test(encoded) ? Buffer.from(encoded, "base64") : undefined;
 }
 
+// What a secret read from a file or a variable may have around it. `trim`
+// drops more (a byte order mark, a no-break space), and the same value
+// must be a secret, or not one, in every client.
+const around = " \t\r\n";
+
+function bare(value: string): string {
+  let from = 0;
+  let to = value.length;
+  while (from < to && around.includes(value.charAt(from))) from++;
+  while (to > from && around.includes(value.charAt(to - 1))) to--;
+  return value.slice(from, to);
+}
+
 /** Checks that a webhook is CairnPost's. */
 export class Verifier {
   readonly #key: Buffer;
@@ -67,10 +80,13 @@ export class Verifier {
   /**
    * Makes a verifier for an endpoint's signing secret: the "whsec_..."
    * value `webhooks.create` answered or, once the secret was changed, the
-   * one `webhooks.rotateSecret` did. Each is said only once.
+   * one `webhooks.rotateSecret` did. Each is said only once. A space, a
+   * tab or a line break around it is dropped, as a value read from a file
+   * ends in a line break. Nothing else is: one with any other character
+   * around it (a byte order mark, say) is refused.
    */
   constructor(secret: string, options: VerifierOptions = {}) {
-    const trimmed = typeof secret === "string" ? secret.trim() : "";
+    const trimmed = typeof secret === "string" ? bare(secret) : "";
     const key = trimmed.startsWith("whsec_") ? decode(trimmed.slice("whsec_".length)) : undefined;
     if (key === undefined) throw new WebhookError("secret");
     this.#key = key;
