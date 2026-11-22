@@ -153,7 +153,7 @@ test("a batch answers each email in its place", async (t) => {
     {"error":{"statusCode":429,"name":"rate_limit_exceeded","message":"Limit.","id":"m2","retry_after":30}},
     {"id":"m3","scheduled_at":"2030-01-02T00:00:00Z"},
     {"error":{"statusCode":503,"name":"not_started","message":"Its turn did not come."}},
-    {"error":{"statusCode":502,"name":"SomethingNew","message":"SUBJECTMARK","id":"m5"}}]}`);
+    {"error":{"statusCode":502,"name":"SomethingNew","message":"SUBJECTMARK","id":"m5","retry_after":9}}]}`);
   const results = await s.client.emails.sendBatch({ emails: [email, email, { ...email, scheduledAt: at }, email, email], idempotencyKey: "run-1" });
   assert.equal(s.seen[0]?.path, "/emails/batch");
   assert.equal(s.seen[0]?.idem, "run-1");
@@ -167,6 +167,7 @@ test("a batch answers each email in its place", async (t) => {
   // An error this client does not know is one email's, by its status alone.
   const unknown = results[4]?.error;
   assert.deepEqual([unknown?.status, unknown?.code, unknown?.detail, unknown?.emailId, mayHaveSent(unknown)], [502, undefined, undefined, undefined, true]);
+  assert.equal(unknown?.retryAfterMs, undefined, "a wait said under a name this client does not know");
   assert.equal(failed(results), 3);
 });
 

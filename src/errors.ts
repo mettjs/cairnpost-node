@@ -42,7 +42,13 @@ export class CairnPostError extends Error {
    * earlier try under the same idempotency key that may have gone.
    */
   readonly emailId: string | undefined;
-  /** How long the server asked to wait, in milliseconds; undefined when it did not say. */
+  /**
+   * How long the server asked to wait, in milliseconds; undefined when it
+   * did not say. Whole seconds, at least one and never more than about
+   * 31 years: a wait outside that is read as none. A timer holds at
+   * most 2,147,483,647 ms (about 24.8 days) and fires at once when given
+   * more, so sleep a longer wait in parts.
+   */
   readonly retryAfterMs: number | undefined;
 
   constructor(p: Problem) {

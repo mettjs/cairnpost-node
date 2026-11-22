@@ -3,6 +3,7 @@ import { isKnown } from "./codes.ts";
 import type { CairnPostError } from "./errors.ts";
 import { problemFrom } from "./problem.ts";
 import { fields, has, list, Misshapen } from "./read.ts";
+import { believed } from "./wait.ts";
 
 /** Several emails to send in one request. */
 export interface Batch {
@@ -44,7 +45,6 @@ export function readBatch(v: unknown, later: boolean[]): BatchResult[] {
     if (typeof status !== "number" || !Number.isInteger(status) || status < 400 || status > 599) throw new Misshapen();
     // Under a name this client does not know, only the status is
     // believed, as for an answer that is not CairnPost's.
-    const wait = typeof e["retry_after"] === "number" && e["retry_after"] > 0 ? e["retry_after"] * 1000 : undefined;
-    return { error: problemFrom(status, e, isKnown(e["name"]) ? wait : undefined) };
+    return { error: problemFrom(status, e, isKnown(e["name"]) ? believed(e["retry_after"]) : undefined) };
   });
 }
