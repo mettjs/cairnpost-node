@@ -6,6 +6,31 @@ Every change a user of this client can notice is written here. The format is
 
 ## [Unreleased]
 
+### Fixed
+
+- `retryAfterMs` is read by one rule, the same in the Go and Python
+  clients. A wait is 1 to 9 digits of seconds in the `Retry-After`
+  header, or a date there exactly as HTTP writes one now
+  (`Sun, 06 Nov 1994 08:49:37 GMT`), and is at least a second and at
+  most 999,999,999 seconds. Anything else is no wait.
+  - A date that never comes was read as a later one: 31 Feb as a day in
+    March, an hour 24 as the next day. So was a date with its names in
+    other letters (`sun`, `NOV`) or with the wrong day of the week.
+  - The wait until a date is counted in whole seconds, a part of one as
+    a whole one, so that a caller never comes back early. It was
+    rounded to the nearest.
+  - Around the header's value only a space, a tab or a line break is
+    dropped. A no-break space was dropped too.
+  - A date more than 999,999,999 seconds away (about 31 years) is no
+    wait. It was passed on as it was.
+  - On an email of a batch, a `retry_after` that is not a whole number
+    from 1 to 999,999,999 is no wait. A fraction, or a number of any
+    size, was passed on.
+
+  A timer in Node.js holds at most 2,147,483,647 milliseconds, about
+  24.8 days, and one given more fires at once. Sleep a longer
+  `retryAfterMs` in parts.
+
 ## [0.1.1] - 2026-11-22
 
 ### Fixed
