@@ -6,6 +6,17 @@ Every change a user of this client can notice is written here. The format is
 
 ## [Unreleased]
 
+### Fixed
+
+- `new Verifier` drops only a space, a tab or a line break around a
+  signing secret, and so do the Go and Python clients now. Each dropped
+  what its own language calls blank space, and the three sets differ: a
+  secret with a byte order mark in front was taken here and refused by
+  the other two. A secret with any other character around it, the mark,
+  a no-break space or a form feed among them, is now refused with a
+  `WebhookError` whose `reason` is `"secret"`. If yours is read from a
+  file saved with a byte order mark, remove the mark.
+
 ## [0.1.0] - 2026-11-17
 
 ### Added
