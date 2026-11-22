@@ -1,6 +1,6 @@
 {
   "name": "cairnpost",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "The Node.js client for CairnPost, a self-hostable gateway for transactional email.",
   "license": "MIT",
   "author": "Michael Ramirez",

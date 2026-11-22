@@ -6,6 +6,8 @@ Every change a user of this client can notice is written here. The format is
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-22
+
 ### Fixed
 
 - `new Verifier` drops only a space, a tab or a line break around a
@@ -54,5 +56,6 @@ Every change a user of this client can notice is written here. The format is
   come in) and `captured`.
 - `health` and `limits`.
 
-[Unreleased]: https://github.com/mettjs/cairnpost-node/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/mettjs/cairnpost-node/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/mettjs/cairnpost-node/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/mettjs/cairnpost-node/releases/tag/v0.1.0
