@@ -21,6 +21,12 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm test
+      # The shared cases are a copy of the server's own, at the commit SOURCE names.
+      - name: The shared cases are the server's
+        run: |
+          git clone --quiet --filter=blob:none https://github.com/mettjs/CairnPost.git "$RUNNER_TEMP/server"
+          git -C "$RUNNER_TEMP/server" checkout --quiet "$(cat test/cases/SOURCE)"
+          diff -r --exclude=SOURCE --exclude=README.md "$RUNNER_TEMP/server/client-cases" test/cases
       - run: npm run build
       # The package as a user gets it: installed elsewhere, then used.
       - run: |

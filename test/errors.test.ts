@@ -3,47 +3,10 @@ import { once } from "node:events";
 import net from "node:net";
 import { test } from "node:test";
 import { inspect } from "node:util";
-import { CairnPost, CairnPostError, ErrorCode, isNotFound, isWrongAddress, mayHaveSent, TransportError } from "../src/index.ts";
+import { CairnPost, CairnPostError, isWrongAddress, mayHaveSent, TransportError } from "../src/index.ts";
 import { email, key, serve, serving, thrown } from "./stand.ts";
 
-test("an error says what to do", async (t) => {
-  const cases: [status: number, body: string, after: string, code: string | undefined, id: string | undefined, retry: boolean, mayBeOut: boolean][] = [
-    [422, `{"statusCode":422,"name":"validation_error","message":"The subject is missing."}`, "", ErrorCode.validation, undefined, false, false],
-    [422, `{"statusCode":422,"name":"sender_domain_not_ready","message":"Not set up.","id":"msg-9"}`, "", ErrorCode.senderDomainNotReady, "msg-9", false, false],
-    [422, `{"name":"recipient_suppressed","message":"Suppressed.","id":"msg-9"}`, "", ErrorCode.recipientSuppressed, "msg-9", false, true],
-    [409, `{"name":"invalid_idempotent_request","message":"Used."}`, "", ErrorCode.idempotentMismatch, undefined, false, false],
-    [409, `{"name":"concurrent_idempotent_requests","message":"In flight."}`, "7", ErrorCode.idempotentInFlight, undefined, true, false],
-    [408, `{"name":"request_incomplete","message":"Not whole."}`, "", ErrorCode.requestIncomplete, undefined, true, false],
-    // A 408 from something in between may come after the server took it.
-    [408, `<html>request timeout</html>`, "", undefined, undefined, true, true],
-    [429, `{"name":"rate_limit_exceeded","message":"Limit.","id":"msg-2"}`, "30", ErrorCode.rateLimited, "msg-2", true, false],
-    [502, `{"name":"upstream_unknown","message":"Lost.","id":"msg-3"}`, "", ErrorCode.upstreamUnknown, "msg-3", true, true],
-    [503, `{"name":"upstream_unavailable","message":"Down."}`, "", ErrorCode.upstreamDown, undefined, true, false],
-    [503, `{"name":"schedule_full","message":"Full."}`, "", ErrorCode.scheduleFull, undefined, true, false],
-    [401, `{"name":"invalid_api_key","message":"No."}`, "", ErrorCode.invalidKey, undefined, false, false],
-    // Changed by others meanwhile: read it and try again.
-    [409, `{"name":"changed_meanwhile","message":"Changed."}`, "", ErrorCode.changedMeanwhile, undefined, true, false],
-    [503, `{"name":"unavailable","message":"Down."}`, "", ErrorCode.unavailable, undefined, true, false],
-    [500, `{"name":"internal_error","message":"Failed."}`, "", ErrorCode.internal, undefined, true, true],
-    // Something in between answered: the server may have sent all the same.
-    [502, `<html>bad gateway</html>`, "", undefined, undefined, true, true],
-    [504, `{"name":"GatewayTimeout","message":"SUBJECTMARK"}`, "", undefined, undefined, true, true],
-    [500, `["not", "an object"]`, "", undefined, undefined, true, true],
-    // Without an id, a suppression means nothing went.
-    [422, `{"name":"recipient_suppressed","message":"Suppressed."}`, "", ErrorCode.recipientSuppressed, undefined, false, false],
-    // A name that every object has is not one of CairnPost's.
-    [500, `{"name":"constructor","message":"SUBJECTMARK"}`, "", undefined, undefined, true, true],
-  ];
-  for (const [status, body, after, code, id, retry, mayBeOut] of cases) {
-    const s = await serving(t, (res) => res.writeHead(status, after ? { "retry-after": after } : {}).end(body));
-    const err = await thrown(() => s.client.emails.send(email));
-    assert.ok(err instanceof CairnPostError, `${status}: ${String(err)}`);
-    const got = [err.status, err.code, err.emailId, err.retryAfterMs, err.retryable, mayHaveSent(err)];
-    assert.deepEqual(got, [status, code, id, after ? Number(after) * 1000 : undefined, retry, mayBeOut], `${status} ${body}`);
-    assert.ok(!err.message.includes("SUBJECTMARK"));
-    assert.equal(err.detail === undefined, code === undefined);
-  }
-});
+// What an error says to do is in the shared cases (cases-errors.test.ts).
 
 // An error never repeats what the email said or the key that sent it,
 // whatever went wrong and whatever the server answered.
@@ -118,29 +81,11 @@ test("Retry-After as a date is read, and anything else is not", async (t) => {
   }
 });
 
-// A path the server does not have is not a missing record: a client
-// pointed at a wrong address must not read every email as gone. Nor is a
-// 404 from something else at that address.
-test("a wrong address is not a missing record", async (t) => {
-  const cases: [why: string, status: number, body: string, missing: boolean, off: boolean][] = [
-    ["a record that is not there", 404, `{"statusCode":404,"name":"not_found","message":"No email has this id."}`, true, false],
-    ["a path that is not there", 404, `{"statusCode":404,"name":"route_not_found","message":"There is nothing at this path."}`, false, true],
-    ["a method the path refuses", 405, `{"statusCode":405,"name":"method_not_allowed","message":"This path does not take PUT."}`, false, true],
-    ["a proxy's own 404", 404, `<html>not here</html>`, false, true],
-    ["a refusal", 422, `{"statusCode":422,"name":"validation_error","message":"no"}`, false, false],
-  ];
-  for (const [why, status, body, missing, off] of cases) {
-    const s = await serve(t, status, body);
-    const err = await thrown(() => s.client.emails.get("0199"));
-    assert.deepEqual([isNotFound(err), isWrongAddress(err)], [missing, off], why);
-  }
-  // The server's own sentence is kept, so the error says what to check.
+// The server's own sentence is kept, so the error says what to check; and
+// no answer at all is not a wrong address.
+test("a wrong address says what to check", async (t) => {
   const said = await serve(t, 404, `{"statusCode":404,"name":"route_not_found","message":"Check the path and the server's address."}`);
   const err = await thrown(() => said.client.emails.get("0199"));
   assert.ok(err instanceof CairnPostError && err.message.includes("Check the path and the server's address") && err.detail === "Check the path and the server's address.");
-  // A redirect is something else answering at that address too.
-  const moved = await serving(t, (res) => res.writeHead(308, { location: "/elsewhere" }).end());
-  const redirect = await thrown(() => moved.client.emails.get("0199"));
-  assert.ok(isWrongAddress(redirect) && !isNotFound(redirect));
   assert.ok(!isWrongAddress(undefined) && !isWrongAddress(new TransportError("network")), "no answer at all is not a wrong address");
 });
