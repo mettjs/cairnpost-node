@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { bare } from "./bare.ts";
 import type { WebhookEvent } from "./events.ts";
 import { readEvent } from "./payload.ts";
 
@@ -58,19 +59,6 @@ function decode(encoded: string): Buffer | undefined {
   return encoded !== "" && base64.test(encoded) ? Buffer.from(encoded, "base64") : undefined;
 }
 
-// What a secret read from a file or a variable may have around it. `trim`
-// drops more (a byte order mark, a no-break space), and the same value
-// must be a secret, or not one, in every client.
-const around = " \t\r\n";
-
-function bare(value: string): string {
-  let from = 0;
-  let to = value.length;
-  while (from < to && around.includes(value.charAt(from))) from++;
-  while (to > from && around.includes(value.charAt(to - 1))) to--;
-  return value.slice(from, to);
-}
-
 /** Checks that a webhook is CairnPost's. */
 export class Verifier {
   readonly #key: Buffer;
@@ -118,10 +106,10 @@ export class Verifier {
     }
     const raw = bytesOf(body);
     const { id, stamp, signatures } = signed(headers);
-    if (id === "" || stamp === "" || signatures === "" || !/^\d{1,15}$/.test(stamp)) throw new WebhookError("unsigned");
+    if (id === "" || stamp === "" || signatures === "" || !/^[0-9]{1,15}$/.test(stamp)) throw new WebhookError("unsigned");
     const want = createHmac("sha256", this.#key).update(`${id}.${stamp}.`).update(raw).digest();
     let matched = false;
-    for (const candidate of signatures.split(/\s+/)) {
+    for (const candidate of signatures.split(/[ \t\r\n]+/)) {
       const got = candidate.startsWith("v1,") ? decode(candidate.slice(3)) : undefined;
       if (got !== undefined && got.length === want.length && timingSafeEqual(got, want)) matched = true;
     }
@@ -145,7 +133,10 @@ function bytesOf(body: unknown): Buffer {
   throw new TypeError("cairnpost: verify takes the request's body as it arrived, as text or bytes: not parsed, and not left out");
 }
 
-/** Reads the signature headers under whichever names they came. */
+/**
+ * Reads the signature headers under whichever names they came, each
+ * without the space, tabs and line breaks around its value.
+ */
 function signed(headers: RequestHeaders): { id: string; stamp: string; signatures: string } {
   let found = { id: "", stamp: "", signatures: "" };
   for (const prefix of ["webhook-", "svix-"]) {
@@ -157,12 +148,12 @@ function signed(headers: RequestHeaders): { id: string; stamp: string; signature
 
 function header(headers: RequestHeaders, name: string): string {
   if (typeof (headers as { get?: unknown }).get === "function") {
-    return ((headers as { get(n: string): string | null }).get(name) ?? "").trim();
+    return bare((headers as { get(n: string): string | null }).get(name) ?? "");
   }
   for (const [key, value] of Object.entries(headers as Record<string, string | string[] | undefined>)) {
     if (key.toLowerCase() !== name) continue;
     const first = Array.isArray(value) ? value[0] : value;
-    return typeof first === "string" ? first.trim() : "";
+    return typeof first === "string" ? bare(first) : "";
   }
   return "";
 }

@@ -16,6 +16,18 @@ Every change a user of this client can notice is written here. The format is
   a no-break space or a form feed among them, is now refused with a
   `WebhookError` whose `reason` is `"secret"`. If yours is read from a
   file saved with a byte order mark, remove the mark.
+- One value is now read the same way by this client and by the Go and
+  Python ones. Around an API key, and around the id, the timestamp and
+  the signatures of a webhook, a space, a tab or a line break is dropped
+  and nothing else is.
+  - `new CairnPost` refuses a key with any other character around it. It
+    dropped a byte order mark and other blank characters (a no-break
+    space, a form feed) and took what was left. If your key is read from
+    a file saved with a byte order mark, remove the mark.
+  - `verify` no longer drops those characters around a webhook's id,
+    timestamp or signature, nor takes them for the gap between two
+    signatures. Such a webhook is refused, as the other clients refuse
+    it. A webhook as CairnPost sends it has none of them.
 
 ## [0.1.0] - 2026-11-17
 

@@ -1,4 +1,5 @@
 import { reading } from "./answer.ts";
+import { bare } from "./bare.ts";
 import { Emails } from "./emails.ts";
 import { isWrongAddress } from "./asks.ts";
 import { ErrorCode } from "./codes.ts";
@@ -82,7 +83,10 @@ export class CairnPost {
   /**
    * Makes a client for the server at `baseUrl` ("https://mail.example.com")
    * using `apiKey`. A send key may send and read its own emails; the
-   * calls marked "admin key" need an admin key.
+   * calls marked "admin key" need an admin key. A space, a tab or a line
+   * break around the key is dropped, as a value read from a file ends in
+   * a line break; a key with anything else in it that no key has is
+   * refused.
    */
   constructor(baseUrl: string, apiKey: string, options: ClientOptions = {}) {
     let url: URL | undefined;
@@ -95,10 +99,10 @@ export class CairnPost {
       throw new TypeError("cairnpost: the base URL must be http:// or https:// and name a host");
     }
     // A key read from a file often ends in a newline; one with anything
-    // else a header cannot carry is refused here, not at the first call.
-    const key = typeof apiKey === "string" ? apiKey.trim() : "";
-    if (key === "" || !headerSafe(key) || key.includes(" ")) {
-      throw new TypeError("cairnpost: an API key is required, and holds no spaces or control characters");
+    // else in it that no key has is refused here, not at the first call.
+    const key = typeof apiKey === "string" ? bare(apiKey) : "";
+    if (!/^[\x21-\x7e]+$/.test(key)) {
+      throw new TypeError("cairnpost: an API key is required, and holds only printable ASCII characters, with no spaces");
     }
     // Said here, not by the runtime at the first call, and by its name.
     const { timeoutMs, maxAnswerBytes } = options;
