@@ -15,7 +15,7 @@ the email that comes in, and verifies the webhooks CairnPost sends.
 It is written in TypeScript, has no dependencies, and needs Node.js 22 or
 later.
 
-**Status: early.** This is 0.1.1, for CairnPost 0.1.1. The
+**Status: early.** This is 0.1.2, for CairnPost 0.1.1. The
 [changelog](https://github.com/mettjs/cairnpost-node/blob/main/CHANGELOG.md) says
 what exists.
 

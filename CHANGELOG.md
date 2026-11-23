@@ -6,6 +6,8 @@ Every change a user of this client can notice is written here. The format is
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-22
+
 ### Fixed
 
 - `retryAfterMs` is read by one rule, the same in the Go and Python
@@ -81,6 +83,7 @@ Every change a user of this client can notice is written here. The format is
   come in) and `captured`.
 - `health` and `limits`.
 
-[Unreleased]: https://github.com/mettjs/cairnpost-node/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/mettjs/cairnpost-node/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/mettjs/cairnpost-node/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/mettjs/cairnpost-node/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/mettjs/cairnpost-node/releases/tag/v0.1.0

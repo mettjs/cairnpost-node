@@ -12,7 +12,7 @@ import { type CallOptions, headerSafe, Transport } from "./transport.ts";
 import { Webhooks } from "./webhooks.ts";
 
 /** This client's version, said in its User-Agent. */
-export const version = "0.1.1";
+export const version = "0.1.2";
 
 /**
  * How long a call may take, in milliseconds. It is longer than the server
